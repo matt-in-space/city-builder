@@ -23,7 +23,7 @@ Get a Bevy app running with a camera looking at nothing. The foundation everythi
 
 Replace the flat plane with a real heightmap terrain the player can look around.
 
-- [ ] Define a `TerrainConfig` resource (map size, resolution, height scale)
+- [x] Define a `TerrainConfig` resource (map size, resolution, height scale)
 - [ ] Implement heightmap generation (Perlin/simplex noise with octaves for natural-looking hills and valleys)
 - [ ] Generate terrain mesh from heightmap (vertex grid, normals, UVs)
 - [ ] Render terrain with a basic material (solid green or simple gradient by elevation)

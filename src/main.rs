@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 
+mod terrain;
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -12,6 +14,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(FreeCameraPlugin)
+        .init_resource::<terrain::TerrainConfig>()
         .add_systems(Startup, setup)
         .run();
 }
