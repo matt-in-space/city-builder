@@ -10,12 +10,12 @@ Each milestone is scoped to be completable in a focused session or two. Checkbox
 
 Get a Bevy app running with a camera looking at nothing. The foundation everything else builds on.
 
-- [ ] Initialize Bevy project with Cargo, basic dependencies (bevy, bevy_egui or equivalent for future UI)
-- [ ] Create app with default plugins, set window title and size
-- [ ] Add a 3D perspective camera with basic orbit controls (pan, zoom, rotate)
-- [ ] Add a ground-plane placeholder (flat colored plane) so the camera has something to look at
-- [ ] Add basic lighting (directional light for sun, ambient light)
-- [ ] Verify builds and runs cleanly on target platform
+- [x] Initialize Bevy project with Cargo, basic dependencies (bevy, bevy_egui or equivalent for future UI)
+- [x] Create app with default plugins, set window title and size
+- [x] Add a 3D perspective camera with basic orbit controls (pan, zoom, rotate)
+- [x] Add a ground-plane placeholder (flat colored plane) so the camera has something to look at
+- [x] Add basic lighting (directional light for sun, ambient light)
+- [x] Verify builds and runs cleanly on target platform
 
 ---
 

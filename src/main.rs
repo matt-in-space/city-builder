@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 
 fn main() {
     App::new()
@@ -10,6 +11,7 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugins(FreeCameraPlugin)
         .add_systems(Startup, setup)
         .run();
 }
@@ -32,12 +34,18 @@ fn setup(
             shadows_enabled: true,
             ..default()
         },
-        Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, 0.5, -std::f32::consts::FRAC_PI_4)),
+        Transform::from_rotation(Quat::from_euler(
+            EulerRot::ZYX,
+            0.0,
+            0.5,
+            -std::f32::consts::FRAC_PI_4,
+        )),
     ));
 
-    // Camera
+    // Camera with free camera controls (WASD + mouse)
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(-10.0, 15.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
+        FreeCamera::default(),
     ));
 }
