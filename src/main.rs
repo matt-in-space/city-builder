@@ -15,7 +15,7 @@ fn main() {
         }))
         .add_plugins(FreeCameraPlugin)
         .init_resource::<terrain::TerrainConfig>()
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (terrain::generate_heightmap, setup))
         .run();
 }
 
