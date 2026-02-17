@@ -15,21 +15,11 @@ fn main() {
         }))
         .add_plugins(FreeCameraPlugin)
         .init_resource::<terrain::TerrainConfig>()
-        .add_systems(Startup, (terrain::generate_heightmap, setup))
+        .add_systems(Startup, (terrain::generate_heightmap, terrain::spawn_terrain_mesh, setup).chain())
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    // Ground plane
-    commands.spawn((
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(50.0, 50.0))),
-        MeshMaterial3d(materials.add(Color::srgb(0.3, 0.5, 0.3))),
-    ));
-
+fn setup(mut commands: Commands) {
     // Directional light (sun)
     commands.spawn((
         DirectionalLight {
@@ -48,7 +38,7 @@ fn setup(
     // Camera with free camera controls (WASD + mouse)
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(-10.0, 15.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(-50.0, 80.0, 100.0).looking_at(Vec3::ZERO, Vec3::Y),
         FreeCamera::default(),
     ));
 }
