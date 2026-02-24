@@ -245,6 +245,9 @@ pub enum ActiveTool {
 /// Distance (world units) within which a click snaps to an existing node.
 const SNAP_RADIUS: f32 = 5.0;
 
+/// Minimum distance between consecutive placed points to prevent micro-roads from misclicks.
+const MIN_SEGMENT_LENGTH: f32 = 3.0;
+
 /// Tracks in-progress road placement (points placed so far).
 #[derive(Resource, Default)]
 pub struct RoadPlacementState {
@@ -380,6 +383,12 @@ pub fn road_placement_input(
         } else {
             hit.point
         };
+        // Reject if too close to the last placed point
+        if let Some(&last) = placement.points.last() {
+            if point.distance(last) < MIN_SEGMENT_LENGTH {
+                return;
+            }
+        }
         placement.points.push(point);
     }
 }
