@@ -102,8 +102,9 @@ pub fn spawn_terrain_mesh(
     let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
     let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertex_count);
     let mut uvs: Vec<[f32; 2]> = Vec::with_capacity(vertex_count);
+    let mut colors: Vec<[f32; 4]> = Vec::with_capacity(vertex_count);
 
-    // --- Vertices ---
+    // --- Vertices & colors ---
     for row in 0..res {
         for col in 0..res {
             let x = col as f32 * cell_size - half;
@@ -112,6 +113,29 @@ pub fn spawn_terrain_mesh(
 
             positions.push([x, y, z]);
             uvs.push([col as f32 / (res - 1) as f32, row as f32 / (res - 1) as f32]);
+
+            // Color by elevation: green (low) → brown (mid) → gray (high)
+            let t = (y / config.height_scale).clamp(0.0, 1.0);
+            let color = if t < 0.5 {
+                // Green to brown
+                let s = t / 0.5;
+                [
+                    0.2 + s * 0.35,  // 0.20 → 0.55
+                    0.45 - s * 0.15, // 0.45 → 0.30
+                    0.15,            // low blue
+                    1.0,
+                ]
+            } else {
+                // Brown to gray
+                let s = (t - 0.5) / 0.5;
+                [
+                    0.55 - s * 0.1, // 0.55 → 0.45
+                    0.30 + s * 0.1, // 0.30 → 0.40
+                    0.15 + s * 0.2, // 0.15 → 0.35
+                    1.0,
+                ]
+            };
+            colors.push(color);
         }
     }
 
@@ -169,10 +193,16 @@ pub fn spawn_terrain_mesh(
         .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
         .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
         .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR, colors)
         .with_inserted_indices(Indices::U32(indices));
 
+    // White base color so vertex colors drive the appearance
     commands.spawn((
         Mesh3d(meshes.add(mesh)),
-        MeshMaterial3d(materials.add(Color::srgb(0.3, 0.5, 0.3))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            perceptual_roughness: 0.9,
+            ..default()
+        })),
     ));
 }
