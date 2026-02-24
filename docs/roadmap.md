@@ -70,8 +70,8 @@ Add the minimal UI needed to interact with the game and control game flow.
 - [x] Implement game speed controls (pause, normal, fast, very fast)
 - [x] Add a basic HUD showing current date (month/year), city funds, population count
 - [x] Implement a toolbar for selecting tools (road tool, zone tool, building placement tool — stubs for now)
-- [ ] Add a simple info panel that shows details when hovering/clicking objects
-- [ ] Implement a basic notification/message system for surfacing game events to the player
+- [x] Add a simple info panel that shows details when hovering/clicking objects
+- [x] Implement a basic notification/message system for surfacing game events to the player
 
 ---
 

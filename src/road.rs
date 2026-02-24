@@ -6,6 +6,7 @@ use bevy_egui::input::EguiWantsInput;
 use std::collections::HashMap;
 
 use crate::terrain::{Heightmap, TerrainConfig, TerrainMesh};
+use crate::ui::Notifications;
 
 /// Surface material of a road. Affects cost, speed, and visuals.
 /// Only Dirt is used initially — the others exist for future upgrade progression.
@@ -490,6 +491,7 @@ pub fn road_placement_input(
     terrain_query: Query<(), With<TerrainMesh>>,
     mut placement: ResMut<RoadPlacementState>,
     mut road_network: ResMut<RoadNetwork>,
+    mut notifications: ResMut<Notifications>,
     active_tool: Res<ActiveTool>,
 ) {
     if *active_tool != ActiveTool::Road {
@@ -556,6 +558,7 @@ pub fn road_placement_input(
                 road_network.add_segment(pair[0], pair[1], Vec::new(), RoadType::Dirt, 2.0);
             }
         }
+        notifications.push("Road built", 3.0);
         return;
     }
 

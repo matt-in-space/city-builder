@@ -23,11 +23,15 @@ fn main() {
         .init_resource::<road::RoadPlacementState>()
         .init_resource::<ui::GameTime>()
         .init_resource::<ui::CityBudget>()
+        .init_resource::<ui::CursorWorldPosition>()
+        .init_resource::<ui::Notifications>()
         .add_systems(Startup, (terrain::generate_heightmap, terrain::generate_biome_map, terrain::spawn_terrain_mesh, terrain::spawn_water_plane, setup).chain())
         .add_systems(Update, (
             camera::camera_controls,
             ui::advance_game_time,
             ui::speed_controls,
+            ui::update_cursor_position,
+            ui::tick_notifications,
             road::toggle_road_tool,
             road::road_placement_input,
             road::generate_road_meshes,
