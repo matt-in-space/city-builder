@@ -145,6 +145,9 @@ pub enum ActiveTool {
     Road,
 }
 
+/// Distance (world units) within which a click snaps to an existing node.
+const SNAP_RADIUS: f32 = 5.0;
+
 /// Tracks in-progress road placement (points placed so far).
 #[derive(Resource, Default)]
 pub struct RoadPlacementState {
@@ -206,8 +209,10 @@ pub fn road_placement_input(
             Vec::new()
         };
 
-        let start_node = road_network.add_node(start_pos);
-        let end_node = road_network.add_node(end_pos);
+        let start_node = road_network.nearest_node(start_pos, SNAP_RADIUS)
+            .unwrap_or_else(|| road_network.add_node(start_pos));
+        let end_node = road_network.nearest_node(end_pos, SNAP_RADIUS)
+            .unwrap_or_else(|| road_network.add_node(end_pos));
         road_network.add_segment(start_node, end_node, control_points, RoadType::Dirt, 8.0);
         return;
     }
@@ -236,7 +241,13 @@ pub fn road_placement_input(
 
     let hits = ray_cast.cast_ray(ray, &settings);
     if let Some((_, hit)) = hits.first() {
-        placement.points.push(hit.point);
+        // Snap to nearby existing node if one exists
+        let point = if let Some(node_id) = road_network.nearest_node(hit.point, SNAP_RADIUS) {
+            road_network.node(node_id).unwrap().position
+        } else {
+            hit.point
+        };
+        placement.points.push(point);
     }
 }
 
