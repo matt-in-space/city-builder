@@ -330,6 +330,58 @@ pub fn generate_road_meshes(
         }
     }
 
+    // Fill intersection nodes with a flat disc polygon
+    let disc_sides: u32 = 12;
+    for node in road_network.nodes().values() {
+        if node.segments.len() < 2 {
+            continue;
+        }
+
+        // Disc radius = max half-width of connected segments
+        let radius = node.segments.iter()
+            .filter_map(|&seg_id| road_network.segment(seg_id))
+            .map(|seg| seg.width / 2.0)
+            .fold(0.0f32, f32::max);
+
+        // Color from the first connected segment
+        let color = node.segments.iter()
+            .filter_map(|&seg_id| road_network.segment(seg_id))
+            .map(|seg| seg.road_type.color())
+            .next()
+            .unwrap_or([0.55, 0.40, 0.25, 1.0]);
+
+        let center = node.position;
+        let center_y = heightmap.sample_world(center.x, center.z, config.map_size) + ROAD_Y_OFFSET;
+        let base_vertex = positions.len() as u32;
+
+        // Center vertex
+        positions.push([center.x, center_y, center.z]);
+        normals.push([0.0, 1.0, 0.0]);
+        uvs.push([0.5, 0.5]);
+        colors.push(color);
+
+        // Circumference vertices
+        for i in 0..disc_sides {
+            let angle = (i as f32 / disc_sides as f32) * std::f32::consts::TAU;
+            let x = center.x + angle.cos() * radius;
+            let z = center.z + angle.sin() * radius;
+            let y = heightmap.sample_world(x, z, config.map_size) + ROAD_Y_OFFSET;
+
+            positions.push([x, y, z]);
+            normals.push([0.0, 1.0, 0.0]);
+            uvs.push([0.5 + angle.cos() * 0.5, 0.5 + angle.sin() * 0.5]);
+            colors.push(color);
+        }
+
+        // Triangle fan (winding: center, next, current → faces up)
+        for i in 0..disc_sides {
+            let next = (i + 1) % disc_sides;
+            indices.push(base_vertex);
+            indices.push(base_vertex + 1 + next);
+            indices.push(base_vertex + 1 + i);
+        }
+    }
+
     if positions.is_empty() {
         return;
     }

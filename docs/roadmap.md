@@ -58,7 +58,7 @@ Turn the road spline data into visible geometry on the terrain.
 - [x] Project road vertices down onto the terrain heightmap so roads follow the ground
 - [x] Stitch sample points into a triangle-strip mesh
 - [x] Apply a road material (brown for dirt, gray for paved — based on road type)
-- [ ] Handle basic intersection rendering where roads meet (flat polygon fill at junction)
+- [x] Handle basic intersection rendering where roads meet (flat polygon fill at junction)
 - [x] Roads visually layer on top of terrain (slight Y offset to prevent z-fighting)
 
 ---
