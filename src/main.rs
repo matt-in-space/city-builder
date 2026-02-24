@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 mod camera;
+mod road;
 mod terrain;
 
 fn main() {
@@ -14,6 +15,7 @@ fn main() {
             ..default()
         }))
         .init_resource::<terrain::TerrainConfig>()
+        .init_resource::<road::RoadNetwork>()
         .add_systems(Startup, (terrain::generate_heightmap, terrain::generate_biome_map, terrain::spawn_terrain_mesh, terrain::spawn_water_plane, setup).chain())
         .add_systems(Update, camera::camera_controls)
         .run();

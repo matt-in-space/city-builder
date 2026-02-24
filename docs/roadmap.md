@@ -37,8 +37,8 @@ Replace the flat plane with a real heightmap terrain the player can look around.
 
 Let the player draw freeform roads on the terrain. No mesh generation yet — just the data and debug visualization.
 
-- [ ] Define road data structures: `RoadNode` (position, connected segment IDs), `RoadSegment` (two node IDs, spline control points, `RoadType`, width), `RoadNetwork` graph resource
-- [ ] Define `RoadType` enum (Dirt, Gravel, Paved) — only Dirt used initially, but the field exists for future progression
+- [x] Define road data structures: `RoadNode` (position, connected segment IDs), `RoadSegment` (two node IDs, spline control points, `RoadType`, width), `RoadNetwork` graph resource
+- [x] Define `RoadType` enum (Dirt, Gravel, Paved) — only Dirt used initially, but the field exists for future progression
 - [ ] Implement road placement input: click to place control points on terrain via raycasting
 - [ ] Snap-to-existing nodes when placing near one, so intersections form cleanly
 - [ ] When a new road crosses an existing segment, split the existing segment and create a proper intersection node
