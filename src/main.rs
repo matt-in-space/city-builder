@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 
+mod camera;
 mod terrain;
 
 fn main() {
@@ -13,9 +13,9 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins(FreeCameraPlugin)
         .init_resource::<terrain::TerrainConfig>()
         .add_systems(Startup, (terrain::generate_heightmap, terrain::generate_biome_map, terrain::spawn_terrain_mesh, terrain::spawn_water_plane, setup).chain())
+        .add_systems(Update, camera::camera_controls)
         .run();
 }
 
@@ -35,10 +35,10 @@ fn setup(mut commands: Commands) {
         )),
     ));
 
-    // Camera with free camera controls (WASD + mouse)
+    // Camera
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(-50.0, 80.0, 100.0).looking_at(Vec3::ZERO, Vec3::Y),
-        FreeCamera::default(),
+        camera::CityCamera,
     ));
 }

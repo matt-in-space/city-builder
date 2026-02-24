@@ -29,7 +29,7 @@ Replace the flat plane with a real heightmap terrain the player can look around.
 - [x] Render terrain with a basic material (solid green or simple gradient by elevation)
 - [x] Add water plane at a fixed elevation (flat blue plane that fills low areas)
 - [x] Add terrain material/biome layer — paint grass, dirt, rock based on elevation and slope
-- [ ] Ensure camera controls feel good when navigating the terrain (zoom limits, pan boundaries)
+- [x] Ensure camera controls feel good when navigating the terrain (zoom limits, pan boundaries)
 
 ---
 
