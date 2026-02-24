@@ -3,6 +3,10 @@ use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::asset::RenderAssetUsages;
 use noise::{Fbm, MultiFractal, NoiseFn, Perlin};
 
+/// Marker component for the terrain mesh entity, used for raycasting.
+#[derive(Component)]
+pub struct TerrainMesh;
+
 /// Global configuration for terrain generation.
 ///
 /// - `map_size`: side length of the terrain in world units (square map).
@@ -287,6 +291,7 @@ pub fn spawn_terrain_mesh(
             perceptual_roughness: 0.9,
             ..default()
         })),
+        TerrainMesh,
     ));
 }
 

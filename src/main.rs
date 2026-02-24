@@ -16,8 +16,15 @@ fn main() {
         }))
         .init_resource::<terrain::TerrainConfig>()
         .init_resource::<road::RoadNetwork>()
+        .init_resource::<road::ActiveTool>()
+        .init_resource::<road::RoadPlacementState>()
         .add_systems(Startup, (terrain::generate_heightmap, terrain::generate_biome_map, terrain::spawn_terrain_mesh, terrain::spawn_water_plane, setup).chain())
-        .add_systems(Update, camera::camera_controls)
+        .add_systems(Update, (
+            camera::camera_controls,
+            road::toggle_road_tool,
+            road::road_placement_input,
+            road::draw_road_placement_preview,
+        ))
         .run();
 }
 

@@ -1,5 +1,8 @@
 use bevy::prelude::*;
+use bevy::picking::mesh_picking::ray_cast::{MeshRayCast, MeshRayCastSettings};
 use std::collections::HashMap;
+
+use crate::terrain::TerrainMesh;
 
 /// Surface material of a road. Affects cost, speed, and visuals.
 /// Only Dirt is used initially — the others exist for future upgrade progression.
@@ -131,5 +134,129 @@ impl RoadNetwork {
         }
 
         best.map(|(id, _)| id)
+    }
+}
+
+/// The currently active player tool.
+#[derive(Resource, Default, PartialEq, Eq)]
+pub enum ActiveTool {
+    #[default]
+    None,
+    Road,
+}
+
+/// Tracks in-progress road placement (points placed so far).
+#[derive(Resource, Default)]
+pub struct RoadPlacementState {
+    pub points: Vec<Vec3>,
+}
+
+/// Toggle road placement tool with R key.
+pub fn toggle_road_tool(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut active_tool: ResMut<ActiveTool>,
+    mut placement: ResMut<RoadPlacementState>,
+) {
+    if keys.just_pressed(KeyCode::KeyR) {
+        if *active_tool == ActiveTool::Road {
+            *active_tool = ActiveTool::None;
+        } else {
+            *active_tool = ActiveTool::Road;
+        }
+        placement.points.clear();
+    }
+}
+
+/// Place road control points on the terrain via mouse click + raycast.
+///
+/// - Left click: place a point on the terrain
+/// - Enter: confirm the road (creates nodes and a segment in the RoadNetwork)
+/// - Escape: cancel placement
+pub fn road_placement_input(
+    mut ray_cast: MeshRayCast,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
+    window: Query<&Window>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    terrain_query: Query<(), With<TerrainMesh>>,
+    mut placement: ResMut<RoadPlacementState>,
+    mut road_network: ResMut<RoadNetwork>,
+    active_tool: Res<ActiveTool>,
+) {
+    if *active_tool != ActiveTool::Road {
+        return;
+    }
+
+    // Cancel placement with Escape
+    if keys.just_pressed(KeyCode::Escape) {
+        placement.points.clear();
+        return;
+    }
+
+    // Confirm road with Enter (need at least 2 points)
+    if keys.just_pressed(KeyCode::Enter) && placement.points.len() >= 2 {
+        let points = std::mem::take(&mut placement.points);
+        let start_pos = points[0];
+        let end_pos = *points.last().unwrap();
+
+        // Interior clicks become spline control points
+        let control_points: Vec<Vec3> = if points.len() > 2 {
+            points[1..points.len() - 1].to_vec()
+        } else {
+            Vec::new()
+        };
+
+        let start_node = road_network.add_node(start_pos);
+        let end_node = road_network.add_node(end_pos);
+        road_network.add_segment(start_node, end_node, control_points, RoadType::Dirt, 8.0);
+        return;
+    }
+
+    // Place point on left click
+    if !mouse_buttons.just_pressed(MouseButton::Left) {
+        return;
+    }
+
+    let Ok((camera, camera_transform)) = camera_query.single() else {
+        return;
+    };
+    let Ok(window) = window.single() else {
+        return;
+    };
+    let Some(cursor_position) = window.cursor_position() else {
+        return;
+    };
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        return;
+    };
+
+    let filter = |entity: Entity| terrain_query.contains(entity);
+    let settings = MeshRayCastSettings::default()
+        .with_filter(&filter);
+
+    let hits = ray_cast.cast_ray(ray, &settings);
+    if let Some((_, hit)) = hits.first() {
+        placement.points.push(hit.point);
+    }
+}
+
+/// Draw gizmo preview of the road being placed.
+pub fn draw_road_placement_preview(
+    placement: Res<RoadPlacementState>,
+    active_tool: Res<ActiveTool>,
+    mut gizmos: Gizmos,
+) {
+    if *active_tool != ActiveTool::Road || placement.points.is_empty() {
+        return;
+    }
+
+    // Draw spheres at each placed point
+    for &point in &placement.points {
+        gizmos.sphere(Isometry3d::from_translation(point), 1.0, Color::srgb(1.0, 1.0, 0.0));
+    }
+
+    // Draw lines between consecutive points
+    for window in placement.points.windows(2) {
+        gizmos.line(window[0], window[1], Color::srgb(1.0, 1.0, 0.0));
     }
 }
