@@ -40,25 +40,31 @@ The 1920s is an ideal setting for this game for several reasons:
 
 The game supports growth from a tiny rural township to a thriving metropolis. Progression is **emergent from the economy**, not gated by arbitrary population milestones. You *can* build a hospital at 200 people — you just can't afford it, can't staff it, and construction takes forever because everything is imported.
 
+**Founding Phase**
+- The player surveys the map, picks a location near resources and a pre-existing road connection, and establishes a founding point — a named building that represents the town's reason for existing (trading post, lumber camp, mining office, farmstead, etc.).
+- A few starter buildings appear organically around the founding establishment.
+- The player's role is building roads outward toward resources and desirable land.
+
 **Township Phase**
 - Dirt roads, a handful of houses, maybe a single general store.
-- One connection to the outside world (rail line or highway).
+- One connection to the outside world via pre-existing road to map edge.
 - Everything is imported. Budget is razor thin.
 - Maybe one guy with a truck handling all construction.
 - Intimate feel, almost like a tycoon game.
-- The player is placing individual structures nearly by hand.
+- Buildings appear organically along roads — no zoning needed yet.
 
 **Small Town Phase**
-- A small commercial district forms organically.
-- Some roads can be paved. A small factory or workshop opens.
+- A small commercial district forms organically at intersections and along main roads.
+- Some roads can be paved. A small factory or workshop opens near resources.
 - First municipal services appear.
 - Construction is still slow but you might have a small crew.
+- Land use conflicts begin emerging (factory noise near houses), motivating the introduction of zoning.
 
 **City Phase**
 - Real infrastructure: water treatment, proper utilities, highway connections.
 - Local economy begins producing goods, reducing import dependency.
 - Construction firms exist in-city; building is faster.
-- Zoning politics start mattering.
+- Zoning is now a critical governance tool for managing competing land uses.
 
 **Metro Phase**
 - Highways, transit systems, skyscrapers become feasible.
@@ -163,6 +169,32 @@ The player's primary economic lever:
 - **Trade-off:** High taxes fund services but discourage growth. Low taxes attract people/businesses but limit infrastructure investment.
 - **Dynamic costs:** Construction costs reflect the *actual economy*. If steel prices are high, bridges cost more. If there's a local asphalt plant, paving is cheaper. The budget is a real-time window into economic health.
 
+### Starting Industries
+
+Industries are specific businesses that tie to map resources, not generic zone outcomes. Each is a named entity ("Ridgemont Sawmill") that employs workers, produces goods, and has a distinct economic role. Industries spawn based on resource availability and economic opportunity — build a road to a timber stand and a sawmill appears. There are no duplicate factories filling demand that doesn't exist.
+
+**Initial industry set:**
+
+| Industry | Resource | Workers | Produces |
+|---|---|---|---|
+| Sawmill | Timber | 10-15 | Lumber |
+| Brick Works | Clay | 10-15 | Brick |
+| Coal Mine | Coal | 30-50 | Coal (fuel, export) |
+| Quarry | Stone | 10-20 | Stone |
+| Farm | Fertile Land | 3-5 per farm | Food, agricultural goods |
+
+Farms have a unique spatial footprint — farmhouse on the road with acres of cultivated fields behind, creating sprawling agricultural corridors that look distinctly different from the tighter clustering near town.
+
+### Affluence & Wealth
+
+Residents have varying wealth levels that emerge from income and savings. Wealth determines housing quality sought, spending patterns, and political influence.
+
+**Neighborhood stratification** happens organically. Wealthier residents gravitate toward desirable locations (hilltops, waterfronts, quiet streets away from industry). Workers cluster near factories and affordable housing near their jobs. Nobody designates a "rich neighborhood" or a "poor neighborhood" — it emerges from the simulation.
+
+**Political influence scales with affluence.** A tannery near worker cottages is a minor grumble. A tannery near mansions is a city council crisis. The same physical event has different political consequences depending on who it affects. This drives realistic governance dilemmas.
+
+**Social mobility:** An immigrant family arrives with nothing, works at the brick works, saves up, opens a shop, and eventually moves to a nicer part of town. The notable household system tracks these stories.
+
 ### Economic Failure and Recovery
 
 The economy can contract. Failure should feel dramatic but be recoverable:
@@ -197,6 +229,69 @@ Heightmap-based terrain system. The heightmap is a grid of elevation values rend
 
 ---
 
+## Map Resources
+
+The map has a resource layer that defines what raw materials are available and where. Resources are the economic foundation — they determine what industries can exist, what gets exported, and what needs to be imported. Resources are visible on the terrain and generated procedurally based on terrain features.
+
+**Initial resource set:**
+
+| Resource | Terrain Association | Visual Indicator | Harvested By |
+|---|---|---|---|
+| Timber | Forested areas, mid-elevation | Dense dark green tree clusters | Sawmill |
+| Fertile Land | Flat, low areas near water | Rich brown/dark green ground | Farm |
+| Coal | Underground deposits, hilly terrain | Dark patches on hillsides | Coal mine |
+| Clay | Riverside areas, low terrain | Reddish-brown ground patches | Brick works |
+| Stone | Rocky terrain, hillsides | Light gray rock outcroppings | Quarry |
+
+**Accessibility:** A resource only becomes economically useful when connected to the road network. A timber stand with no road is just scenery. Build a road to it and a sawmill can operate there.
+
+**Depletion:** Resources are finite but large. A timber stand has years of harvesting. Depletion is a long-term strategic concern, not an immediate one.
+
+---
+
+## Founding System
+
+The game doesn't start with zone painting or building placement. It starts with the player surveying the map and choosing where and why to establish a town.
+
+**Pre-existing map features:** The map starts with regional connections — roads leading off the map edge representing connections to the wider world. Resources are visible. Geography (rivers, hills, plains) is evident.
+
+**Founding flow:**
+1. Game starts in founding mode — player explores the map freely, no clock running
+2. Player clicks a location to evaluate it
+3. Game shows what's nearby: distance to road connections, nearby resources, terrain features
+4. Based on context, 2-4 founding establishment options are presented
+5. Player picks one; a named building is placed, initial residents arrive, game clock starts
+
+**Founding establishments (initial set):**
+- **Trading Post / General Store** — near road connection, imports/sells goods ("Henderson's Trading Post")
+- **Lumber Camp Office** — near timber + road, harvests and exports timber ("Pacific Lumber Company")
+- **Quarry Office** — near stone/clay + road, harvests stone/brick materials ("Ridgemont Stone Works")
+- **Mining Company Office** — near coal + road, extracts and exports coal ("Black Hill Coal Company")
+- **Farmstead** — near fertile land + road, produces food ("Whitfield Farm")
+
+Each founding choice shapes the early economy and character of the town. The founding establishment has a procedurally generated name and employs the first residents.
+
+**Post-founding:** A few starter buildings appear organically (worker houses, a boarding house). The player then builds roads outward to open up the map. The economy responds to these roads by spawning buildings where opportunities exist.
+
+---
+
+## Immigration & Arrival
+
+People arrive from the outside world through the town's connection — the pre-existing road to the map edge. Immigration rate is driven by town attractiveness: available jobs, available housing, wages, quality of life.
+
+**Arrival mechanics:**
+- Immigration pressure calculated each tick from attractiveness factors
+- New residents appear at the entry point (map-edge road connection)
+- They seek housing first, then employment
+- If they can't find both within a grace period (~2-3 months), they leave
+- Arrivals come in small groups (1-4 people representing individuals or families)
+
+**Multiple connections:** As the player builds roads reaching additional map edges, new entry points open, increasing immigration capacity. A town with one dirt road in gets a trickle; a town with multiple paved connections gets a flood.
+
+**Connection type affects arrivals:** Different connection types (road, eventually rail) influence the demographic mix of arrivals. Rail brings wealthier/skilled workers (train travel costs money). Dirt roads bring working-class families arriving by wagon.
+
+---
+
 ## Roads
 
 Roads are the spine of the city. Freeform, not grid-locked.
@@ -227,51 +322,72 @@ Roads are the spine of the city. Freeform, not grid-locked.
 
 ---
 
-## Zones and Lot System
+## Building Placement & Lot System
 
-### Zone Painting
+### Lots Without Zones
 
-Zones are painted as freeform polygons using a brush tool — like painting in a graphics program. No grid snapping, no alignment to roads.
+In the early game, there are no zones. Buildings are placed based on **road frontage and economic logic**. The lot subdivision system generates buildable parcels along roads, and the economy decides what gets built where. This replaces the traditional city builder pattern of "paint zone → buildings appear."
 
-**Zone Types:** Residential, Commercial, Industrial, Mixed-Use
-
-**Zone Parameters:** Density cap, height limit (future)
-
-**Key principle:** The player sets rules; the economy decides what gets built. Zone a mixed-use area near downtown and you might get ground-floor retail with apartments above. Zone residential near a park and you get single-family homes. The simulation decides based on demand, accessibility, and attractiveness.
+**Road frontage drives everything.** Real settlements grow along roads. The general store faces Main Street. Houses line the road out of town. Nobody builds 200 feet back from the road for no reason. The simulation evaluates placement primarily by proximity and orientation to roads.
 
 ### Lot Subdivision
 
-When zones are painted or modified, a subdivision algorithm generates potential building lots — irregular polygons defined by road network and zone boundaries, not grid cells.
+Lots are generated automatically along the road network — no zones required.
 
 **How it works:**
-- Road frontage is the primary organizing principle
-- Lots project inward from frontage edges
-- Each lot gets properties: area, road frontage length, slope, distance to services
-- Interior lots (no frontage) develop later via alleys or new side streets
+- Walk each road segment, project potential lots outward on both sides
+- Each lot gets a slice of road frontage and extends perpendicular to the road
+- Lots are irregular polygons, not grid cells
+- Each lot gets properties: area, road frontage length, slope, distance to road, building type affinity
 
 **Context-sensitive sizing:**
-- Dense urban core: narrow, deep lots (e.g., 25×100 ft, classic NYC tenement dimensions)
-- Suburban/small town: wider lots (50×120, 80×130)
-- Industrial zones: large irregular lots (factories need floor space, not frontage)
-- Commercial on main roads: wider lots with more frontage (storefronts want visibility)
+- Near town center: smaller lots (25-50 ft frontage, 80-120 ft depth) — denser, more urban
+- Further out along roads: larger lots (60-100 ft frontage, 120-200 ft depth) — more rural
+- Near resources/industrial areas: larger lots for bigger structures
+- Road type influences lot size: dirt road = larger rural lots, paved road = smaller urban lots
 
-**Corner lots** are premium — two-street frontage, weighted toward commercial use.
+**Building type affinity** (what’s likely to be built here):
+- Corner lots at intersections: weighted toward commercial (two-street frontage, foot traffic)
+- Lots near resource sites: weighted toward industrial
+- Lots in clusters near other residential: weighted toward residential
+- Lots along main arteries: weighted toward commercial
+
+**Corner lots** are premium — two-street frontage, naturally attract commercial use.
 
 **Lot dynamics:**
 - Lots can merge (wealthy resident claims multiple lots)
-- Lots can split
-- Lots get redrawn when roads change
+- Lots can split as density increases
+- Lots regenerate when roads change
 - Empty lots fill based on demand — frontage lots first, back lots later
 - Infill development: empty lots develop later at higher density as area matures
 
 ### Building Spawning
 
-Buildings spawn when the economy determines demand:
-- Simulation evaluates lots: zone type, demand, accessibility (roads, transit, utilities), attractiveness (amenities, low crime, terrain)
-- Appropriate building type selected probabilistically
-- Early game: small houses, small shops
-- As area develops: buildings replaced with larger ones (house → duplex → apartment)
-- Organic, uneven growth pattern — not uniform grid fill
+Buildings spawn when economic demand exists, placed on available lots:
+- Simulation evaluates lots by desirability: road proximity, nearby amenities, terrain quality, clustering with existing buildings
+- Building type selected based on lot affinity and economic demand
+- **Clustering behavior:** new buildings prefer lots near existing buildings (gravity toward settlement). Growth radiates outward along roads.
+- Early game: small houses, small shops, farms
+- As area develops: buildings replaced with larger ones (house → duplex → apartment building)
+- Organic, uneven growth pattern — not uniform fill
+
+**Building-road relationship varies by type:**
+- Houses: on the road with a small front yard setback
+- Shops/commercial: right at the road edge, no setback (wants foot traffic)
+- Industrial: near the road but set back, with yard space for staging
+- Farms: farmhouse on the road, fields extend *behind* it across fertile land (large land-use footprint)
+
+**Minor road auto-generation:** As development fills in, the simulation can extend small side streets and alleys to service back lots. The player builds major arteries; the city fills in capillary streets from economic pressure.
+
+### Zoning (Later Governance Tool)
+
+Zoning is NOT how the city starts. It’s a governance tool the player unlocks as the city grows and land use conflicts emerge. Historically, zoning laws in America took off in the 1920s precisely because cities had grown enough that conflicts were serious.
+
+**When it unlocks:** At a population threshold or through a city council event.
+
+**How it works:** Brush-based freeform painting on terrain (no grid). Zone types: Residential, Commercial, Industrial, Mixed-Use. Zones **restrict** what can be built — they don’t force buildings to appear. Unzoned land continues developing based on pure economic logic.
+
+**Zone conflicts create gameplay:** The economy wants to put a warehouse in your residential zone. A developer petitions to rezone. Residents push back. The tension between economic pressure and your zoning vision is interesting governance.
 
 ### Manually Placed Buildings
 
@@ -354,31 +470,48 @@ Art Deco aesthetic. Brick factories with smokestacks, ornate commercial facades,
 
 ## Build Order
 
-### Wave 1: Core City Building
-1. **Terrain** — Heightmap loading, mesh generation, material painting, camera controls
-2. **Roads** — Spline placement, mesh generation, terrain conforming, basic intersection connectivity
-3. **Zone Painting** — Brush-based zone painting, lot subdivision from zones + road network, visual feedback showing lots
-4. **Building Spawning** — Placeholder boxes on lots driven by simple economic check (can be timer-based initially)
-5. **Construction Pipeline** — Plan/under-construction/complete states with visual feedback
-6. **Economy** — The real simulation: goods, supply chains, pricing, individual agents, city budget
+### Wave 1: Foundation (Complete)
+1. **Terrain** — Heightmap, mesh generation, material painting, camera controls
+2. **Roads** — Spline placement, mesh generation, terrain conforming, intersection connectivity
+3. **UI** — HUD, toolbar, game speed controls, info panel
 
-### Wave 2: Event System
-- Build the engine and schema layers
-- Author starter set of events (~50-100) that make construction and economy feel alive
-- Basic faction system (abstract approval ratings)
+### Wave 2: Core Gameplay Loop (Current)
+4. **Lot Subdivision** — Generate buildable lots along roads based on frontage (no zones needed)
+5. **Building Spawning** — Placeholder boxes on lots, driven by fabricated demand initially
+6. **Construction Pipeline** — Plan/under-construction/complete states with visual feedback
 
-### Wave 3: Depth and Polish
-- Deepen factions and politics (council members, elections, corruption)
-- Rich event chains, historical anchors (Crash of '29)
-- Construction animation and visual polish
-- Traffic simulation
-- Real art assets replacing placeholder geometry
+### Wave 3: Living Economy
+7. **Map Resources** — Timber, fertile land, coal, clay, stone as visible terrain features
+8. **Founding System** — Starting location choice, founding establishment, entry point
+9. **Starting Industries** — Sawmill, brick works, coal mine, quarry, farm
+10. **Population & Immigration** — Individual residents, needs, arrival mechanics
+11. **Basic Economy** — Money flow, wages, taxes, city budget, business viability
+
+### Wave 4: Economic Depth
+12. **Goods & Import System** — Physical goods, supply chains, construction material requirements
+13. **Market Pricing** — Supply/demand driven prices, economic feedback loops
+14. **Zoning as Governance** — Unlockable zoning to restrict/direct growth
+15. **Affluence & Wealth** — Wealth stratification, housing quality, political influence
+16. **Agricultural Land** — Farm footprints, sprawling farmland, development pressure
+
+### Wave 5: Events & Politics
+17. **Event System** — Paradox-style narrative events with player choices
+18. **Factions & Politics** — City council, approval ratings, competing interests
+
+### Wave 6: Polish & Art
+19. **Construction Animation** — Scaffolding, workers, material deliveries
+20. **Art Assets** — 1920s Art Deco models replacing placeholder geometry
+21. **Rail System** — Railroad as transport and trade artery
+22. **River Transport** — Rivers as economic features
+23. **Traffic Simulation** — Vehicles on roads, congestion
 
 ### Future Expansions
 - Additional decades (1930s, 1940s, 1950s)
 - Expanded event content (Prohibition, labor movement, wartime industry)
 - Deeper systems (transit networks, suburbs, advanced politics)
 - Modding support for community-authored events and content
+
+See `docs/features/` for detailed feature specifications with implementation checklists.
 
 ---
 
