@@ -30,6 +30,46 @@ impl Default for TerrainConfig {
     }
 }
 
+/// Terrain biome classification for each grid cell.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Biome {
+    /// Submerged terrain near the shoreline
+    Sand,
+    /// Flat or gentle terrain at low-to-mid elevation
+    Grass,
+    /// Moderate slopes or mid-high elevation
+    Dirt,
+    /// Steep slopes or high elevation
+    Rock,
+}
+
+impl Biome {
+    /// Vertex color for this biome type.
+    pub fn color(&self) -> [f32; 4] {
+        match self {
+            Biome::Sand  => [0.76, 0.70, 0.50, 1.0], // warm sandy tan
+            Biome::Grass => [0.30, 0.50, 0.20, 1.0], // green
+            Biome::Dirt  => [0.55, 0.40, 0.25, 1.0], // earthy brown
+            Biome::Rock  => [0.50, 0.48, 0.45, 1.0], // gray stone
+        }
+    }
+}
+
+/// Per-cell biome classification for the terrain, same resolution as the heightmap.
+#[derive(Resource)]
+pub struct BiomeMap {
+    pub biomes: Vec<Biome>,
+    pub resolution: u32,
+}
+
+impl BiomeMap {
+    pub fn get(&self, row: u32, col: u32) -> Biome {
+        let row = row.min(self.resolution - 1);
+        let col = col.min(self.resolution - 1);
+        self.biomes[(row * self.resolution + col) as usize]
+    }
+}
+
 /// A grid of elevation values generated from noise.
 ///
 /// Stored as a flat `Vec<f32>` in row-major order (row * resolution + col).
@@ -84,6 +124,67 @@ pub fn generate_heightmap(mut commands: Commands, config: Res<TerrainConfig>) {
     });
 }
 
+/// Classify each grid cell into a biome based on elevation, slope, and water level.
+///
+/// Rules:
+/// - Below or just above water level → Sand (shoreline)
+/// - Steep slope (normal Y < 0.85) → Rock (cliffs)
+/// - High elevation (top 30%) → Rock
+/// - Mid elevation or moderate slope → Dirt
+/// - Everything else → Grass
+pub fn generate_biome_map(
+    mut commands: Commands,
+    config: Res<TerrainConfig>,
+    heightmap: Res<Heightmap>,
+) {
+    let res = heightmap.resolution;
+    let cell_size = config.map_size / res as f32;
+    let mut biomes = Vec::with_capacity((res * res) as usize);
+
+    for row in 0..res {
+        for col in 0..res {
+            let height = heightmap.get(row, col);
+
+            // Compute slope from neighbor heights (same as normal calculation)
+            let h_left = if col > 0 { heightmap.get(row, col - 1) } else { height };
+            let h_right = if col < res - 1 { heightmap.get(row, col + 1) } else { height };
+            let h_down = if row > 0 { heightmap.get(row - 1, col) } else { height };
+            let h_up = if row < res - 1 { heightmap.get(row + 1, col) } else { height };
+
+            let normal = Vec3::new(
+                h_left - h_right,
+                2.0 * cell_size,
+                h_down - h_up,
+            )
+            .normalize();
+
+            // normal.y: 1.0 = flat, 0.0 = vertical cliff
+            let flatness = normal.y;
+            let elevation_t = height / config.height_scale;
+            let shore_margin = 2.0; // world units above water = sand
+
+            let biome = if height < config.water_level + shore_margin {
+                Biome::Sand
+            } else if flatness < 0.85 {
+                Biome::Rock
+            } else if elevation_t > 0.7 {
+                Biome::Rock
+            } else if flatness < 0.93 || elevation_t > 0.5 {
+                Biome::Dirt
+            } else {
+                Biome::Grass
+            };
+
+            biomes.push(biome);
+        }
+    }
+
+    commands.insert_resource(BiomeMap {
+        biomes,
+        resolution: res,
+    });
+}
+
 /// Build a terrain mesh from the heightmap and spawn it into the world.
 ///
 /// For each grid point, creates a vertex at (x, height, z). Connects
@@ -93,6 +194,7 @@ pub fn spawn_terrain_mesh(
     mut commands: Commands,
     config: Res<TerrainConfig>,
     heightmap: Res<Heightmap>,
+    biome_map: Res<BiomeMap>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -116,29 +218,7 @@ pub fn spawn_terrain_mesh(
 
             positions.push([x, y, z]);
             uvs.push([col as f32 / (res - 1) as f32, row as f32 / (res - 1) as f32]);
-
-            // Color by elevation: green (low) → brown (mid) → gray (high)
-            let t = (y / config.height_scale).clamp(0.0, 1.0);
-            let color = if t < 0.5 {
-                // Green to brown
-                let s = t / 0.5;
-                [
-                    0.2 + s * 0.35,  // 0.20 → 0.55
-                    0.45 - s * 0.15, // 0.45 → 0.30
-                    0.15,            // low blue
-                    1.0,
-                ]
-            } else {
-                // Brown to gray
-                let s = (t - 0.5) / 0.5;
-                [
-                    0.55 - s * 0.1, // 0.55 → 0.45
-                    0.30 + s * 0.1, // 0.30 → 0.40
-                    0.15 + s * 0.2, // 0.15 → 0.35
-                    1.0,
-                ]
-            };
-            colors.push(color);
+            colors.push(biome_map.get(row, col).color());
         }
     }
 

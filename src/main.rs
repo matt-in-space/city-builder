@@ -15,7 +15,7 @@ fn main() {
         }))
         .add_plugins(FreeCameraPlugin)
         .init_resource::<terrain::TerrainConfig>()
-        .add_systems(Startup, (terrain::generate_heightmap, terrain::spawn_terrain_mesh, terrain::spawn_water_plane, setup).chain())
+        .add_systems(Startup, (terrain::generate_heightmap, terrain::generate_biome_map, terrain::spawn_terrain_mesh, terrain::spawn_water_plane, setup).chain())
         .run();
 }
 
