@@ -1,8 +1,10 @@
 use bevy::prelude::*;
+use bevy::asset::RenderAssetUsages;
+use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::picking::mesh_picking::ray_cast::{MeshRayCast, MeshRayCastSettings};
 use std::collections::HashMap;
 
-use crate::terrain::TerrainMesh;
+use crate::terrain::{Heightmap, TerrainConfig, TerrainMesh};
 
 /// Surface material of a road. Affects cost, speed, and visuals.
 /// Only Dirt is used initially — the others exist for future upgrade progression.
@@ -12,6 +14,17 @@ pub enum RoadType {
     Dirt,
     Gravel,
     Paved,
+}
+
+impl RoadType {
+    /// Vertex color for this road surface type.
+    fn color(&self) -> [f32; 4] {
+        match self {
+            RoadType::Dirt   => [0.55, 0.40, 0.25, 1.0],
+            RoadType::Gravel => [0.60, 0.58, 0.55, 1.0],
+            RoadType::Paved  => [0.35, 0.35, 0.38, 1.0],
+        }
+    }
 }
 
 /// Unique identifier for a node in the road network.
@@ -204,6 +217,139 @@ pub fn sample_catmull_rom(points: &[Vec3], samples_per_segment: usize) -> Vec<Ve
 
     result.push(*points.last().unwrap());
     result
+}
+
+/// Marker component for the generated road mesh entity.
+#[derive(Component)]
+pub struct RoadMesh;
+
+/// Small Y offset above terrain to prevent z-fighting.
+const ROAD_Y_OFFSET: f32 = 0.15;
+
+/// Number of curve samples per spline segment for mesh generation.
+const MESH_SAMPLES_PER_SEGMENT: usize = 8;
+
+/// Rebuild road meshes whenever the road network changes.
+///
+/// For each segment: samples the Catmull-Rom spline, generates a flat strip
+/// of vertices projected onto the terrain heightmap, and stitches them into
+/// triangles. Vertex colors are driven by road type.
+pub fn generate_road_meshes(
+    mut commands: Commands,
+    road_network: Res<RoadNetwork>,
+    heightmap: Res<Heightmap>,
+    config: Res<TerrainConfig>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    existing: Query<Entity, With<RoadMesh>>,
+) {
+    if !road_network.is_changed() {
+        return;
+    }
+
+    // Despawn existing road mesh
+    for entity in &existing {
+        commands.entity(entity).despawn();
+    }
+
+    if road_network.segments().is_empty() {
+        return;
+    }
+
+    let mut positions: Vec<[f32; 3]> = Vec::new();
+    let mut normals: Vec<[f32; 3]> = Vec::new();
+    let mut uvs: Vec<[f32; 2]> = Vec::new();
+    let mut colors: Vec<[f32; 4]> = Vec::new();
+    let mut indices: Vec<u32> = Vec::new();
+
+    for segment in road_network.segments().values() {
+        let Some(node_a) = road_network.node(segment.nodes[0]) else { continue };
+        let Some(node_b) = road_network.node(segment.nodes[1]) else { continue };
+
+        // Build path and sample the spline
+        let mut path = vec![node_a.position];
+        path.extend_from_slice(&segment.control_points);
+        path.push(node_b.position);
+
+        let curve_points = sample_catmull_rom(&path, MESH_SAMPLES_PER_SEGMENT);
+        if curve_points.len() < 2 {
+            continue;
+        }
+
+        let half_width = segment.width / 2.0;
+        let color = segment.road_type.color();
+        let base_vertex = positions.len() as u32;
+
+        for (i, &center) in curve_points.iter().enumerate() {
+            // Forward direction (tangent along the road)
+            let forward = if i < curve_points.len() - 1 {
+                (curve_points[i + 1] - center).normalize_or_zero()
+            } else {
+                (center - curve_points[i - 1]).normalize_or_zero()
+            };
+
+            // Right vector perpendicular to forward on the XZ plane
+            let right = Vec3::new(-forward.z, 0.0, forward.x).normalize_or_zero();
+
+            let left_pt = center - right * half_width;
+            let right_pt = center + right * half_width;
+
+            // Project onto terrain
+            let left_y = heightmap.sample_world(left_pt.x, left_pt.z, config.map_size) + ROAD_Y_OFFSET;
+            let right_y = heightmap.sample_world(right_pt.x, right_pt.z, config.map_size) + ROAD_Y_OFFSET;
+
+            positions.push([left_pt.x, left_y, left_pt.z]);
+            positions.push([right_pt.x, right_y, right_pt.z]);
+
+            normals.push([0.0, 1.0, 0.0]);
+            normals.push([0.0, 1.0, 0.0]);
+
+            let v = i as f32 / (curve_points.len() - 1) as f32;
+            uvs.push([0.0, v]);
+            uvs.push([1.0, v]);
+
+            colors.push(color);
+            colors.push(color);
+        }
+
+        // Stitch consecutive cross-sections into triangles
+        let num_samples = curve_points.len() as u32;
+        for i in 0..(num_samples - 1) {
+            let bl = base_vertex + i * 2;         // bottom-left
+            let br = base_vertex + i * 2 + 1;     // bottom-right
+            let tl = base_vertex + (i + 1) * 2;   // top-left
+            let tr = base_vertex + (i + 1) * 2 + 1; // top-right
+
+            indices.push(bl);
+            indices.push(br);
+            indices.push(tl);
+
+            indices.push(tl);
+            indices.push(br);
+            indices.push(tr);
+        }
+    }
+
+    if positions.is_empty() {
+        return;
+    }
+
+    let mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default())
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR, colors)
+        .with_inserted_indices(Indices::U32(indices));
+
+    commands.spawn((
+        Mesh3d(meshes.add(mesh)),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            perceptual_roughness: 0.9,
+            ..default()
+        })),
+        RoadMesh,
+    ));
 }
 
 /// Test if two line segments intersect in the XZ plane.

@@ -53,13 +53,13 @@ Let the player draw freeform roads on the terrain. No mesh generation yet — ju
 
 Turn the road spline data into visible geometry on the terrain.
 
-- [ ] Sample points along the road spline at regular intervals
-- [ ] Generate cross-section vertices at each sample point (flat strip for now)
-- [ ] Project road vertices down onto the terrain heightmap so roads follow the ground
-- [ ] Stitch sample points into a triangle-strip mesh
-- [ ] Apply a road material (brown for dirt, gray for paved — based on road type)
+- [x] Sample points along the road spline at regular intervals
+- [x] Generate cross-section vertices at each sample point (flat strip for now)
+- [x] Project road vertices down onto the terrain heightmap so roads follow the ground
+- [x] Stitch sample points into a triangle-strip mesh
+- [x] Apply a road material (brown for dirt, gray for paved — based on road type)
 - [ ] Handle basic intersection rendering where roads meet (flat polygon fill at junction)
-- [ ] Roads visually layer on top of terrain (slight Y offset to prevent z-fighting)
+- [x] Roads visually layer on top of terrain (slight Y offset to prevent z-fighting)
 
 ---
 

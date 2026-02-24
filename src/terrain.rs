@@ -91,6 +91,34 @@ impl Heightmap {
         let col = col.min(self.resolution - 1);
         self.heights[(row * self.resolution + col) as usize]
     }
+
+    /// Sample the terrain height at a world-space (x, z) position using
+    /// bilinear interpolation. The terrain is centered on the origin.
+    pub fn sample_world(&self, x: f32, z: f32, map_size: f32) -> f32 {
+        let half = map_size / 2.0;
+        let cell_size = map_size / self.resolution as f32;
+
+        let col_f = ((x + half) / cell_size).clamp(0.0, (self.resolution - 1) as f32);
+        let row_f = ((z + half) / cell_size).clamp(0.0, (self.resolution - 1) as f32);
+
+        let col0 = col_f.floor() as u32;
+        let col1 = (col0 + 1).min(self.resolution - 1);
+        let row0 = row_f.floor() as u32;
+        let row1 = (row0 + 1).min(self.resolution - 1);
+
+        let fx = col_f.fract();
+        let fz = row_f.fract();
+
+        let h00 = self.get(row0, col0);
+        let h10 = self.get(row0, col1);
+        let h01 = self.get(row1, col0);
+        let h11 = self.get(row1, col1);
+
+        let h0 = h00 * (1.0 - fx) + h10 * fx;
+        let h1 = h01 * (1.0 - fx) + h11 * fx;
+
+        h0 * (1.0 - fz) + h1 * fz
+    }
 }
 
 /// Generate a heightmap from the terrain config using fBm Perlin noise.
