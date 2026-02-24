@@ -119,6 +119,34 @@ impl RoadNetwork {
         &self.segments
     }
 
+    /// Remove a segment and unregister it from its endpoint nodes.
+    pub fn remove_segment(&mut self, id: SegmentId) {
+        if let Some(segment) = self.segments.remove(&id) {
+            for node_id in &segment.nodes {
+                if let Some(node) = self.nodes.get_mut(node_id) {
+                    node.segments.retain(|&s| s != id);
+                }
+            }
+        }
+    }
+
+    /// Split an existing segment at a position, creating a new intersection node
+    /// and two sub-segments that replace the original. Returns the new node ID.
+    pub fn split_segment_at(&mut self, segment_id: SegmentId, position: Vec3) -> NodeId {
+        let (nodes, road_type, width) = {
+            let segment = &self.segments[&segment_id];
+            (segment.nodes, segment.road_type, segment.width)
+        };
+
+        self.remove_segment(segment_id);
+
+        let mid_node = self.add_node(position);
+        self.add_segment(nodes[0], mid_node, Vec::new(), road_type, width);
+        self.add_segment(mid_node, nodes[1], Vec::new(), road_type, width);
+
+        mid_node
+    }
+
     /// Find the nearest node within a radius. Used for snap-to-existing behavior.
     pub fn nearest_node(&self, position: Vec3, max_distance: f32) -> Option<NodeId> {
         let max_dist_sq = max_distance * max_distance;
@@ -134,6 +162,34 @@ impl RoadNetwork {
         }
 
         best.map(|(id, _)| id)
+    }
+}
+
+/// Test if two line segments intersect in the XZ plane.
+/// Returns (t, u) parameters along segments A and B respectively.
+/// Excludes near-endpoint hits to avoid spurious splits at shared nodes.
+fn segment_intersection_xz(a1: Vec3, a2: Vec3, b1: Vec3, b2: Vec3) -> Option<(f32, f32)> {
+    let d1x = a2.x - a1.x;
+    let d1z = a2.z - a1.z;
+    let d2x = b2.x - b1.x;
+    let d2z = b2.z - b1.z;
+
+    let cross = d1x * d2z - d1z * d2x;
+    if cross.abs() < 1e-6 {
+        return None; // Parallel or collinear
+    }
+
+    let dx = b1.x - a1.x;
+    let dz = b1.z - a1.z;
+    let t = (dx * d2z - dz * d2x) / cross;
+    let u = (dx * d1z - dz * d1x) / cross;
+
+    // Exclude hits very close to endpoints to avoid double-splits at shared nodes
+    let eps = 0.01;
+    if t > eps && t < (1.0 - eps) && u > eps && u < (1.0 - eps) {
+        Some((t, u))
+    } else {
+        None
     }
 }
 
@@ -202,18 +258,54 @@ pub fn road_placement_input(
         let start_pos = points[0];
         let end_pos = *points.last().unwrap();
 
-        // Interior clicks become spline control points
-        let control_points: Vec<Vec3> = if points.len() > 2 {
-            points[1..points.len() - 1].to_vec()
-        } else {
-            Vec::new()
-        };
-
         let start_node = road_network.nearest_node(start_pos, SNAP_RADIUS)
             .unwrap_or_else(|| road_network.add_node(start_pos));
         let end_node = road_network.nearest_node(end_pos, SNAP_RADIUS)
             .unwrap_or_else(|| road_network.add_node(end_pos));
-        road_network.add_segment(start_node, end_node, control_points, RoadType::Dirt, 8.0);
+
+        let start_world = road_network.node(start_node).unwrap().position;
+        let end_world = road_network.node(end_node).unwrap().position;
+
+        // Find intersections between the new road line and existing segments
+        let mut intersections: Vec<(SegmentId, Vec3)> = Vec::new();
+        for (&seg_id, segment) in road_network.segments() {
+            let a = road_network.node(segment.nodes[0]).unwrap().position;
+            let b = road_network.node(segment.nodes[1]).unwrap().position;
+            if let Some((t, _)) = segment_intersection_xz(start_world, end_world, a, b) {
+                let point = start_world.lerp(end_world, t);
+                intersections.push((seg_id, point));
+            }
+        }
+
+        if intersections.is_empty() {
+            // No crossings — create single segment with control points
+            let control_points: Vec<Vec3> = if points.len() > 2 {
+                points[1..points.len() - 1].to_vec()
+            } else {
+                Vec::new()
+            };
+            road_network.add_segment(start_node, end_node, control_points, RoadType::Dirt, 8.0);
+        } else {
+            // Sort intersections by distance along new road from start
+            intersections.sort_by(|a, b| {
+                let da = a.1.distance_squared(start_world);
+                let db = b.1.distance_squared(start_world);
+                da.partial_cmp(&db).unwrap()
+            });
+
+            // Split each crossed segment and collect intersection node IDs
+            let mut chain: Vec<NodeId> = vec![start_node];
+            for (seg_id, point) in intersections {
+                let int_node = road_network.split_segment_at(seg_id, point);
+                chain.push(int_node);
+            }
+            chain.push(end_node);
+
+            // Create new road as chain of segments through intersection nodes
+            for pair in chain.windows(2) {
+                road_network.add_segment(pair[0], pair[1], Vec::new(), RoadType::Dirt, 8.0);
+            }
+        }
         return;
     }
 
@@ -251,23 +343,39 @@ pub fn road_placement_input(
     }
 }
 
-/// Draw gizmo preview of the road being placed.
-pub fn draw_road_placement_preview(
+/// Draw gizmo preview of the road being placed (yellow)
+/// and debug visualization of all committed roads in the network (white nodes, orange segments).
+pub fn draw_road_debug(
     placement: Res<RoadPlacementState>,
     active_tool: Res<ActiveTool>,
+    road_network: Res<RoadNetwork>,
     mut gizmos: Gizmos,
 ) {
+    // --- Committed road network ---
+    let node_color = Color::srgb(1.0, 1.0, 1.0);
+    let segment_color = Color::srgb(1.0, 0.6, 0.2);
+
+    for node in road_network.nodes().values() {
+        gizmos.sphere(Isometry3d::from_translation(node.position), 0.8, node_color);
+    }
+
+    for segment in road_network.segments().values() {
+        let Some(a) = road_network.node(segment.nodes[0]) else { continue };
+        let Some(b) = road_network.node(segment.nodes[1]) else { continue };
+        gizmos.line(a.position, b.position, segment_color);
+    }
+
+    // --- In-progress placement preview (yellow) ---
     if *active_tool != ActiveTool::Road || placement.points.is_empty() {
         return;
     }
 
-    // Draw spheres at each placed point
+    let preview_color = Color::srgb(1.0, 1.0, 0.0);
     for &point in &placement.points {
-        gizmos.sphere(Isometry3d::from_translation(point), 1.0, Color::srgb(1.0, 1.0, 0.0));
+        gizmos.sphere(Isometry3d::from_translation(point), 1.0, preview_color);
     }
 
-    // Draw lines between consecutive points
     for window in placement.points.windows(2) {
-        gizmos.line(window[0], window[1], Color::srgb(1.0, 1.0, 0.0));
+        gizmos.line(window[0], window[1], preview_color);
     }
 }

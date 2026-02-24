@@ -41,9 +41,9 @@ Let the player draw freeform roads on the terrain. No mesh generation yet — ju
 - [x] Define `RoadType` enum (Dirt, Gravel, Paved) — only Dirt used initially, but the field exists for future progression
 - [x] Implement road placement input: click to place control points on terrain via raycasting
 - [x] Snap-to-existing nodes when placing near one, so intersections form cleanly
-- [ ] When a new road crosses an existing segment, split the existing segment and create a proper intersection node
+- [x] When a new road crosses an existing segment, split the existing segment and create a proper intersection node
 - [ ] Interpolate smooth curves between control points (Catmull-Rom or cubic Bezier spline)
-- [ ] Debug visualization: draw the spline as a line/gizmo on the terrain so you can see the road path
+- [x] Debug visualization: draw the spline as a line/gizmo on the terrain so you can see the road path
 - [ ] Handle road completion (confirm/cancel placement)
 - [ ] Minimum segment length to prevent micro-roads from misclicks
 

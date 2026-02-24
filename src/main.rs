@@ -23,7 +23,7 @@ fn main() {
             camera::camera_controls,
             road::toggle_road_tool,
             road::road_placement_input,
-            road::draw_road_placement_preview,
+            road::draw_road_debug,
         ))
         .run();
 }
