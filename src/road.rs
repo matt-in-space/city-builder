@@ -165,6 +165,47 @@ impl RoadNetwork {
     }
 }
 
+/// Evaluate a Catmull-Rom spline at parameter `t` (0..1) for the segment
+/// between `p1` and `p2`, using `p0` and `p3` as context points.
+fn catmull_rom_point(p0: Vec3, p1: Vec3, p2: Vec3, p3: Vec3, t: f32) -> Vec3 {
+    let t2 = t * t;
+    let t3 = t2 * t;
+
+    0.5 * ((2.0 * p1)
+        + (-p0 + p2) * t
+        + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
+        + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3)
+}
+
+/// Sample points along a Catmull-Rom spline passing through the given positions.
+/// Endpoints are duplicated as phantom control points so the curve starts/ends
+/// exactly at the first/last position.
+///
+/// Returns `samples_per_segment * (points.len() - 1) + 1` evenly-spaced points.
+pub fn sample_catmull_rom(points: &[Vec3], samples_per_segment: usize) -> Vec<Vec3> {
+    if points.len() < 2 {
+        return points.to_vec();
+    }
+
+    let n = points.len();
+    let mut result = Vec::with_capacity(samples_per_segment * (n - 1) + 1);
+
+    for i in 0..(n - 1) {
+        let p0 = if i == 0 { points[0] } else { points[i - 1] };
+        let p1 = points[i];
+        let p2 = points[i + 1];
+        let p3 = if i + 2 < n { points[i + 2] } else { points[n - 1] };
+
+        for s in 0..samples_per_segment {
+            let t = s as f32 / samples_per_segment as f32;
+            result.push(catmull_rom_point(p0, p1, p2, p3, t));
+        }
+    }
+
+    result.push(*points.last().unwrap());
+    result
+}
+
 /// Test if two line segments intersect in the XZ plane.
 /// Returns (t, u) parameters along segments A and B respectively.
 /// Excludes near-endpoint hits to avoid spurious splits at shared nodes.
@@ -362,10 +403,19 @@ pub fn draw_road_debug(
     for segment in road_network.segments().values() {
         let Some(a) = road_network.node(segment.nodes[0]) else { continue };
         let Some(b) = road_network.node(segment.nodes[1]) else { continue };
-        gizmos.line(a.position, b.position, segment_color);
+
+        // Build full point sequence: start + control points + end
+        let mut path = vec![a.position];
+        path.extend_from_slice(&segment.control_points);
+        path.push(b.position);
+
+        let curve = sample_catmull_rom(&path, 16);
+        for pair in curve.windows(2) {
+            gizmos.line(pair[0], pair[1], segment_color);
+        }
     }
 
-    // --- In-progress placement preview (yellow) ---
+    // --- In-progress placement preview (yellow curve) ---
     if *active_tool != ActiveTool::Road || placement.points.is_empty() {
         return;
     }
@@ -375,7 +425,10 @@ pub fn draw_road_debug(
         gizmos.sphere(Isometry3d::from_translation(point), 1.0, preview_color);
     }
 
-    for window in placement.points.windows(2) {
-        gizmos.line(window[0], window[1], preview_color);
+    if placement.points.len() >= 2 {
+        let curve = sample_catmull_rom(&placement.points, 16);
+        for pair in curve.windows(2) {
+            gizmos.line(pair[0], pair[1], preview_color);
+        }
     }
 }

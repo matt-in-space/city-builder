@@ -42,7 +42,7 @@ Let the player draw freeform roads on the terrain. No mesh generation yet — ju
 - [x] Implement road placement input: click to place control points on terrain via raycasting
 - [x] Snap-to-existing nodes when placing near one, so intersections form cleanly
 - [x] When a new road crosses an existing segment, split the existing segment and create a proper intersection node
-- [ ] Interpolate smooth curves between control points (Catmull-Rom or cubic Bezier spline)
+- [x] Interpolate smooth curves between control points (Catmull-Rom or cubic Bezier spline)
 - [x] Debug visualization: draw the spline as a line/gizmo on the terrain so you can see the road path
 - [ ] Handle road completion (confirm/cancel placement)
 - [ ] Minimum segment length to prevent micro-roads from misclicks
