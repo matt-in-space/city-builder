@@ -1,8 +1,10 @@
 use bevy::prelude::*;
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 mod camera;
 mod road;
 mod terrain;
+mod ui;
 
 fn main() {
     App::new()
@@ -14,18 +16,24 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugins(EguiPlugin::default())
         .init_resource::<terrain::TerrainConfig>()
         .init_resource::<road::RoadNetwork>()
         .init_resource::<road::ActiveTool>()
         .init_resource::<road::RoadPlacementState>()
+        .init_resource::<ui::GameTime>()
+        .init_resource::<ui::CityBudget>()
         .add_systems(Startup, (terrain::generate_heightmap, terrain::generate_biome_map, terrain::spawn_terrain_mesh, terrain::spawn_water_plane, setup).chain())
         .add_systems(Update, (
             camera::camera_controls,
+            ui::advance_game_time,
+            ui::speed_controls,
             road::toggle_road_tool,
             road::road_placement_input,
             road::generate_road_meshes,
             road::draw_road_debug,
         ))
+        .add_systems(EguiPrimaryContextPass, ui::draw_ui)
         .run();
 }
 

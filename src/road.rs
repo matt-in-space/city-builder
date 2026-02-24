@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::picking::mesh_picking::ray_cast::{MeshRayCast, MeshRayCastSettings};
+use bevy_egui::input::EguiWantsInput;
 use std::collections::HashMap;
 
 use crate::terrain::{Heightmap, TerrainConfig, TerrainMesh};
@@ -20,7 +21,7 @@ impl RoadType {
     /// Vertex color for this road surface type.
     fn color(&self) -> [f32; 4] {
         match self {
-            RoadType::Dirt   => [0.55, 0.40, 0.25, 1.0],
+            RoadType::Dirt   => [0.35, 0.25, 0.15, 1.0],
             RoadType::Gravel => [0.60, 0.58, 0.55, 1.0],
             RoadType::Paved  => [0.35, 0.35, 0.38, 1.0],
         }
@@ -60,7 +61,7 @@ impl Default for RoadSegment {
             nodes: [NodeId(0), NodeId(0)],
             control_points: Vec::new(),
             road_type: RoadType::default(),
-            width: 8.0,
+            width: 2.0,
         }
     }
 }
@@ -433,15 +434,17 @@ fn segment_intersection_xz(a1: Vec3, a2: Vec3, b1: Vec3, b2: Vec3) -> Option<(f3
 }
 
 /// The currently active player tool.
-#[derive(Resource, Default, PartialEq, Eq)]
+#[derive(Resource, Default, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveTool {
     #[default]
     None,
     Road,
+    Zone,
+    Building,
 }
 
 /// Distance (world units) within which a click snaps to an existing node.
-const SNAP_RADIUS: f32 = 5.0;
+const SNAP_RADIUS: f32 = 3.0;
 
 /// Minimum distance between consecutive placed points to prevent micro-roads from misclicks.
 const MIN_SEGMENT_LENGTH: f32 = 3.0;
@@ -455,9 +458,13 @@ pub struct RoadPlacementState {
 /// Toggle road placement tool with R key.
 pub fn toggle_road_tool(
     keys: Res<ButtonInput<KeyCode>>,
+    egui_input: Res<EguiWantsInput>,
     mut active_tool: ResMut<ActiveTool>,
     mut placement: ResMut<RoadPlacementState>,
 ) {
+    if egui_input.wants_keyboard_input() {
+        return;
+    }
     if keys.just_pressed(KeyCode::KeyR) {
         if *active_tool == ActiveTool::Road {
             *active_tool = ActiveTool::None;
@@ -479,6 +486,7 @@ pub fn road_placement_input(
     window: Query<&Window>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     keys: Res<ButtonInput<KeyCode>>,
+    egui_input: Res<EguiWantsInput>,
     terrain_query: Query<(), With<TerrainMesh>>,
     mut placement: ResMut<RoadPlacementState>,
     mut road_network: ResMut<RoadNetwork>,
@@ -526,7 +534,7 @@ pub fn road_placement_input(
             } else {
                 Vec::new()
             };
-            road_network.add_segment(start_node, end_node, control_points, RoadType::Dirt, 8.0);
+            road_network.add_segment(start_node, end_node, control_points, RoadType::Dirt, 2.0);
         } else {
             // Sort intersections by distance along new road from start
             intersections.sort_by(|a, b| {
@@ -545,13 +553,16 @@ pub fn road_placement_input(
 
             // Create new road as chain of segments through intersection nodes
             for pair in chain.windows(2) {
-                road_network.add_segment(pair[0], pair[1], Vec::new(), RoadType::Dirt, 8.0);
+                road_network.add_segment(pair[0], pair[1], Vec::new(), RoadType::Dirt, 2.0);
             }
         }
         return;
     }
 
-    // Place point on left click
+    // Place point on left click (ignore if pointer is over UI)
+    if egui_input.wants_any_pointer_input() {
+        return;
+    }
     if !mouse_buttons.just_pressed(MouseButton::Left) {
         return;
     }
@@ -604,7 +615,7 @@ pub fn draw_road_debug(
     let segment_color = Color::srgb(1.0, 0.6, 0.2);
 
     for node in road_network.nodes().values() {
-        gizmos.sphere(Isometry3d::from_translation(node.position), 0.8, node_color);
+        gizmos.sphere(Isometry3d::from_translation(node.position), 0.4, node_color);
     }
 
     for segment in road_network.segments().values() {
@@ -629,7 +640,7 @@ pub fn draw_road_debug(
 
     let preview_color = Color::srgb(1.0, 1.0, 0.0);
     for &point in &placement.points {
-        gizmos.sphere(Isometry3d::from_translation(point), 1.0, preview_color);
+        gizmos.sphere(Isometry3d::from_translation(point), 0.5, preview_color);
     }
 
     if placement.points.len() >= 2 {
