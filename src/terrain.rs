@@ -15,6 +15,8 @@ pub struct TerrainConfig {
     pub map_size: f32,
     pub resolution: u32,
     pub height_scale: f32,
+    /// Y elevation of the water surface. Terrain below this appears submerged.
+    pub water_level: f32,
 }
 
 impl Default for TerrainConfig {
@@ -23,6 +25,7 @@ impl Default for TerrainConfig {
             map_size: 500.0,
             resolution: 256,
             height_scale: 30.0,
+            water_level: 10.0,
         }
     }
 }
@@ -204,5 +207,27 @@ pub fn spawn_terrain_mesh(
             perceptual_roughness: 0.9,
             ..default()
         })),
+    ));
+}
+
+/// Spawn a flat blue plane at `water_level` to represent bodies of water.
+///
+/// Sized to cover the full terrain. Semi-transparent so you can see the
+/// terrain underneath in shallow areas.
+pub fn spawn_water_plane(
+    mut commands: Commands,
+    config: Res<TerrainConfig>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.spawn((
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(config.map_size, config.map_size))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgba(0.1, 0.3, 0.5, 0.7),
+            alpha_mode: AlphaMode::Blend,
+            perceptual_roughness: 0.3,
+            ..default()
+        })),
+        Transform::from_xyz(0.0, config.water_level, 0.0),
     ));
 }

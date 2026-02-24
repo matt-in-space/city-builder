@@ -27,7 +27,7 @@ Replace the flat plane with a real heightmap terrain the player can look around.
 - [x] Implement heightmap generation (Perlin/simplex noise with octaves for natural-looking hills and valleys)
 - [x] Generate terrain mesh from heightmap (vertex grid, normals, UVs)
 - [x] Render terrain with a basic material (solid green or simple gradient by elevation)
-- [ ] Add water plane at a fixed elevation (flat blue plane that fills low areas)
+- [x] Add water plane at a fixed elevation (flat blue plane that fills low areas)
 - [ ] Add terrain material/biome layer — paint grass, dirt, rock based on elevation and slope
 - [ ] Ensure camera controls feel good when navigating the terrain (zoom limits, pan boundaries)
 
