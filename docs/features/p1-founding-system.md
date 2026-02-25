@@ -2,7 +2,7 @@
 
 **Priority:** P1
 **Status:** Not Started
-**Depends On:** Terrain (Milestone 2, complete), Map Resources (p1-map-resources)
+**Depends On:** Terrain (Milestone 2, complete), Map Resources (p0-map-resources)
 
 ---
 

@@ -476,12 +476,12 @@ Art Deco aesthetic. Brick factories with smokestacks, ornate commercial facades,
 3. **UI** — HUD, toolbar, game speed controls, info panel
 
 ### Wave 2: Core Gameplay Loop (Current)
-4. **Lot Subdivision** — Generate buildable lots along roads based on frontage (no zones needed)
-5. **Building Spawning** — Placeholder boxes on lots, driven by fabricated demand initially
-6. **Construction Pipeline** — Plan/under-construction/complete states with visual feedback
+4. **Map Resources** — Timber, fertile land, coal, clay, stone as visible terrain features
+5. **Building Spawning** — Placeholder boxes along roads, driven by resource proximity and fabricated demand
+6. **Spatial Claims (Lots)** — Buildings claim space; no pre-subdivision, lots created on placement
+7. **Construction Pipeline** — Plan/under-construction/complete states with visual feedback
 
 ### Wave 3: Living Economy
-7. **Map Resources** — Timber, fertile land, coal, clay, stone as visible terrain features
 8. **Founding System** — Starting location choice, founding establishment, entry point
 9. **Starting Industries** — Sawmill, brick works, coal mine, quarry, farm
 10. **Population & Immigration** — Individual residents, needs, arrival mechanics
@@ -493,17 +493,21 @@ Art Deco aesthetic. Brick factories with smokestacks, ornate commercial facades,
 14. **Zoning as Governance** — Unlockable zoning to restrict/direct growth
 15. **Affluence & Wealth** — Wealth stratification, housing quality, political influence
 16. **Agricultural Land** — Farm footprints, sprawling farmland, development pressure
+17. **Save/Load** — Persist and restore full game state
 
 ### Wave 5: Events & Politics
-17. **Event System** — Paradox-style narrative events with player choices
-18. **Factions & Politics** — City council, approval ratings, competing interests
+18. **Event System** — Paradox-style narrative events with player choices
+19. **Factions & Politics** — City council, approval ratings, competing interests
 
 ### Wave 6: Polish & Art
-19. **Construction Animation** — Scaffolding, workers, material deliveries
-20. **Art Assets** — 1920s Art Deco models replacing placeholder geometry
-21. **Rail System** — Railroad as transport and trade artery
-22. **River Transport** — Rivers as economic features
-23. **Traffic Simulation** — Vehicles on roads, congestion
+20. **Construction Animation** — Scaffolding, workers, material deliveries
+21. **Art Assets** — 1920s Art Deco models replacing placeholder geometry
+22. **Rail System** — Railroad as transport and trade artery
+23. **River Transport** — Rivers as economic features
+24. **Traffic Simulation** — Vehicles on roads, congestion
+25. **Bridges** — Roads spanning water and terrain gaps
+26. **Manually Placed Buildings** — Civic buildings (hospitals, police, fire, schools)
+27. **Sound & Music** — Era-appropriate audio and adaptive soundtrack
 
 ### Future Expansions
 - Additional decades (1930s, 1940s, 1950s)

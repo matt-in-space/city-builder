@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 mod camera;
+mod resources;
 mod road;
 mod terrain;
 mod ui;
@@ -25,7 +26,7 @@ fn main() {
         .init_resource::<ui::CityBudget>()
         .init_resource::<ui::CursorWorldPosition>()
         .init_resource::<ui::Notifications>()
-        .add_systems(Startup, (terrain::generate_heightmap, terrain::generate_biome_map, terrain::spawn_terrain_mesh, terrain::spawn_water_plane, setup).chain())
+        .add_systems(Startup, (terrain::generate_heightmap, terrain::generate_biome_map, resources::generate_resource_map, terrain::spawn_terrain_mesh, terrain::spawn_water_plane, setup).chain())
         .add_systems(Update, (
             camera::camera_controls,
             ui::advance_game_time,

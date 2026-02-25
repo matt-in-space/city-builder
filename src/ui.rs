@@ -5,6 +5,7 @@ use bevy_egui::input::EguiWantsInput;
 
 use crate::camera::CityCamera;
 use crate::road::{ActiveTool, RoadNetwork, RoadPlacementState};
+use crate::resources::ResourceMap;
 use crate::terrain::{Heightmap, TerrainConfig, TerrainMesh};
 
 /// Game simulation speed levels.
@@ -201,6 +202,7 @@ pub fn draw_ui(
     heightmap: Res<Heightmap>,
     config: Res<TerrainConfig>,
     road_network: Res<RoadNetwork>,
+    resource_map: Res<ResourceMap>,
     notifications: Res<Notifications>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
@@ -254,6 +256,11 @@ pub fn draw_ui(
                 let elevation = heightmap.sample_world(pos.x, pos.z, config.map_size);
                 ui.label(format!("Position: ({:.0}, {:.0})", pos.x, pos.z));
                 ui.label(format!("Elevation: {:.1}", elevation));
+
+                // Show resource info
+                if let Some(cell) = resource_map.sample_world(pos.x, pos.z, config.map_size) {
+                    ui.label(format!("{} ({:.0}%)", cell.resource.label(), cell.richness * 100.0));
+                }
 
                 // Show nearby road node info
                 if let Some(node_id) = road_network.nearest_node(pos, 5.0) {

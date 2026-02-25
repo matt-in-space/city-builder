@@ -1,6 +1,6 @@
 # Map Resources
 
-**Priority:** P1
+**Priority:** P0
 **Status:** Not Started
 **Depends On:** Terrain (Milestone 2, complete)
 

@@ -227,6 +227,7 @@ pub fn spawn_terrain_mesh(
     config: Res<TerrainConfig>,
     heightmap: Res<Heightmap>,
     biome_map: Res<BiomeMap>,
+    resource_map: Res<crate::resources::ResourceMap>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -250,7 +251,22 @@ pub fn spawn_terrain_mesh(
 
             positions.push([x, y, z]);
             uvs.push([col as f32 / (res - 1) as f32, row as f32 / (res - 1) as f32]);
-            colors.push(biome_map.get(row, col).color());
+
+            // Blend resource color into biome color based on richness
+            let biome_color = biome_map.get(row, col).color();
+            let color = if let Some(cell) = resource_map.get(row, col) {
+                let rc = cell.resource.color();
+                let t = cell.richness * 0.7; // partial blend to keep biome visible
+                [
+                    biome_color[0] * (1.0 - t) + rc[0] * t,
+                    biome_color[1] * (1.0 - t) + rc[1] * t,
+                    biome_color[2] * (1.0 - t) + rc[2] * t,
+                    1.0,
+                ]
+            } else {
+                biome_color
+            };
+            colors.push(color);
         }
     }
 
