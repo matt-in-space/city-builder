@@ -2,7 +2,7 @@
 
 **Priority:** P1
 **Status:** Not Started
-**Depends On:** Map Resources (p0-map-resources), Building Spawning (p0-building-spawning), Lot Subdivision (p0-lot-subdivision)
+**Depends On:** Map Resources (complete), Building Spawning (p0-building-spawning), Lot Subdivision (p0-lot-subdivision)
 
 ---
 

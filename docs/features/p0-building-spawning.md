@@ -2,7 +2,7 @@
 
 **Priority:** P0
 **Status:** Not Started
-**Depends On:** Lot Subdivision (p0-lot-subdivision), Map Resources (p0-map-resources — co-developed)
+**Depends On:** Lot Subdivision (p0-lot-subdivision), Map Resources (complete)
 
 ---
 
