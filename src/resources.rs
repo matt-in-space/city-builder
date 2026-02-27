@@ -216,3 +216,48 @@ pub fn generate_resource_map(
 
     commands.insert_resource(ResourceMap { cells, resolution: res });
 }
+
+// ---------------------------------------------------------------------------
+// Resource debug overlay (F4)
+// ---------------------------------------------------------------------------
+
+pub fn draw_resource_debug(
+    visible: Res<crate::ui::DebugVisible>,
+    resource_map: Res<ResourceMap>,
+    heightmap: Res<Heightmap>,
+    config: Res<TerrainConfig>,
+    mut gizmos: Gizmos,
+) {
+    if !visible.0 {
+        return;
+    }
+
+    let res = resource_map.resolution;
+    let cell_size = config.map_size / res as f32;
+    let half = config.map_size / 2.0;
+    let rect_size = Vec2::splat(cell_size * 0.9);
+    // Rotate from default XY plane to horizontal XZ plane
+    let flat_rot = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
+    let yellow = Color::srgb(1.0, 1.0, 0.0);
+
+    for row in 0..res {
+        for col in 0..res {
+            let Some(cell) = resource_map.get(row, col) else {
+                continue;
+            };
+            if cell.richness <= 0.2 {
+                continue; // below viability threshold
+            }
+
+            let x = (col as f32 + 0.5) * cell_size - half;
+            let z = (row as f32 + 0.5) * cell_size - half;
+            let y = heightmap.sample_world(x, z, config.map_size) + 0.3;
+
+            gizmos.rect(
+                Isometry3d::new(Vec3::new(x, y, z), flat_rot),
+                rect_size,
+                yellow,
+            );
+        }
+    }
+}

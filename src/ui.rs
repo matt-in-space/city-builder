@@ -1,11 +1,13 @@
-use bevy::prelude::*;
 use bevy::picking::mesh_picking::ray_cast::{MeshRayCast, MeshRayCastSettings};
-use bevy_egui::{egui, EguiContexts};
+use bevy::prelude::*;
 use bevy_egui::input::EguiWantsInput;
+use bevy_egui::{egui, EguiContexts};
 
+use crate::building::Building;
 use crate::camera::CityCamera;
-use crate::road::{ActiveTool, RoadNetwork, RoadPlacementState};
+use crate::economy::{BuildingCategory, EconomyDebug, BUILDING_DEFS};
 use crate::resources::ResourceMap;
+use crate::road::{ActiveTool, RoadNetwork, RoadPlacementState};
 use crate::terrain::{Heightmap, TerrainConfig, TerrainMesh};
 
 /// Game simulation speed levels.
@@ -21,79 +23,38 @@ pub enum GameSpeed {
 impl GameSpeed {
     pub fn multiplier(&self) -> f32 {
         match self {
-            GameSpeed::Paused   => 0.0,
-            GameSpeed::Normal   => 1.0,
-            GameSpeed::Fast     => 2.0,
+            GameSpeed::Paused => 0.0,
+            GameSpeed::Normal => 1.0,
+            GameSpeed::Fast => 2.0,
             GameSpeed::VeryFast => 4.0,
         }
     }
 
     pub fn label(&self) -> &str {
         match self {
-            GameSpeed::Paused   => "Paused",
-            GameSpeed::Normal   => "Normal",
-            GameSpeed::Fast     => "Fast",
+            GameSpeed::Paused => "Paused",
+            GameSpeed::Normal => "Normal",
+            GameSpeed::Fast => "Fast",
             GameSpeed::VeryFast => "Very Fast",
         }
     }
 }
 
-/// Tracks in-game date and simulation speed.
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct GameTime {
     pub speed: GameSpeed,
-    pub month: u32,
-    pub year: u32,
-    /// Accumulated game-time seconds within the current month.
-    pub month_progress: f32,
 }
 
-impl Default for GameTime {
-    fn default() -> Self {
-        Self {
-            speed: GameSpeed::Normal,
-            month: 1,
-            year: 1920,
-            month_progress: 0.0,
-        }
-    }
-}
-
-/// Real seconds per game month at 1x speed.
-const SECONDS_PER_MONTH: f32 = 10.0;
-
-/// Placeholder city budget.
-#[derive(Resource)]
-pub struct CityBudget {
-    pub funds: f64,
-}
-
-impl Default for CityBudget {
-    fn default() -> Self {
-        Self { funds: 10_000.0 }
-    }
-}
-
-/// Advance game date based on current speed.
-pub fn advance_game_time(time: Res<Time>, mut game_time: ResMut<GameTime>) {
-    let dt = time.delta_secs() * game_time.speed.multiplier();
-    game_time.month_progress += dt;
-
-    while game_time.month_progress >= SECONDS_PER_MONTH {
-        game_time.month_progress -= SECONDS_PER_MONTH;
-        game_time.month += 1;
-        if game_time.month > 12 {
-            game_time.month = 1;
-            game_time.year += 1;
-        }
-    }
-}
+/// Master debug toggle (F3): economy panel, road/lot/resource gizmos.
+#[derive(Resource, Default)]
+pub struct DebugVisible(pub bool);
 
 /// Keyboard shortcuts for game speed: Space = pause toggle, 1/2/3 = speed levels.
 pub fn speed_controls(
     keys: Res<ButtonInput<KeyCode>>,
     egui_input: Res<EguiWantsInput>,
     mut game_time: ResMut<GameTime>,
+    mut economy_debug_visible: ResMut<DebugVisible>,
 ) {
     if egui_input.wants_keyboard_input() {
         return;
@@ -114,6 +75,9 @@ pub fn speed_controls(
     }
     if keys.just_pressed(KeyCode::Digit3) {
         game_time.speed = GameSpeed::VeryFast;
+    }
+    if keys.just_pressed(KeyCode::F3) {
+        economy_debug_visible.0 = !economy_debug_visible.0;
     }
 }
 
@@ -138,10 +102,18 @@ pub fn update_cursor_position(
         return;
     }
 
-    let Ok((camera, camera_transform)) = camera_query.single() else { return };
-    let Ok(window) = window.single() else { return };
-    let Some(cursor) = window.cursor_position() else { return };
-    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor) else { return };
+    let Ok((camera, camera_transform)) = camera_query.single() else {
+        return;
+    };
+    let Ok(window) = window.single() else {
+        return;
+    };
+    let Some(cursor) = window.cursor_position() else {
+        return;
+    };
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor) else {
+        return;
+    };
 
     let filter = |entity: Entity| terrain_query.contains(entity);
     let settings = MeshRayCastSettings::default().with_filter(&filter);
@@ -182,20 +154,11 @@ pub fn tick_notifications(time: Res<Time>, mut notifications: ResMut<Notificatio
     notifications.messages.retain(|n| n.timer > 0.0);
 }
 
-fn month_label(month: u32) -> &'static str {
-    match month {
-        1 => "Jan", 2 => "Feb", 3 => "Mar", 4 => "Apr",
-        5 => "May", 6 => "Jun", 7 => "Jul", 8 => "Aug",
-        9 => "Sep", 10 => "Oct", 11 => "Nov", 12 => "Dec",
-        _ => "???",
-    }
-}
-
 /// Draw the HUD, toolbar, info panel, and notifications.
+#[allow(clippy::too_many_arguments)]
 pub fn draw_ui(
     mut contexts: EguiContexts,
     game_time: Res<GameTime>,
-    budget: Res<CityBudget>,
     mut active_tool: ResMut<ActiveTool>,
     mut placement: ResMut<RoadPlacementState>,
     cursor_pos: Res<CursorWorldPosition>,
@@ -204,19 +167,42 @@ pub fn draw_ui(
     road_network: Res<RoadNetwork>,
     resource_map: Res<ResourceMap>,
     notifications: Res<Notifications>,
+    buildings_query: Query<(&Building, &Transform)>,
+    economy_debug: Res<EconomyDebug>,
+    economy_debug_visible: Res<DebugVisible>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
 
-    // --- Top bar: date, speed, funds, population ---
+    // Count buildings by category
+    let mut producer_count = 0u32;
+    let mut residential_count = 0u32;
+    let mut workers_needed = 0u32;
+    let mut workers_provided = 0u32;
+
+    for (b, _) in &buildings_query {
+        let def = &BUILDING_DEFS[b.def_index];
+        match def.category {
+            BuildingCategory::Producer => {
+                producer_count += 1;
+                workers_needed += def.workers_required;
+            }
+            BuildingCategory::Residential => {
+                residential_count += 1;
+                workers_provided += def.workers_provided;
+            }
+        }
+    }
+
+    // --- Top bar ---
     egui::TopBottomPanel::top("hud").show(ctx, |ui| {
         ui.horizontal(|ui| {
-            ui.label(format!("{} {}", month_label(game_time.month), game_time.year));
-            ui.separator();
             ui.label(format!("Speed: {}", game_time.speed.label()));
             ui.separator();
-            ui.label(format!("${:.0}", budget.funds));
+            ui.label(format!("Producers: {}", producer_count));
             ui.separator();
-            ui.label("Pop: 0");
+            ui.label(format!("Residential: {}", residential_count));
+            ui.separator();
+            ui.label(format!("Workers: {}/{}", workers_provided, workers_needed));
         });
     });
 
@@ -237,7 +223,10 @@ pub fn draw_ui(
                 ];
 
                 for &(tool, label) in tools {
-                    if ui.selectable_label(*active_tool == tool, label).clicked() {
+                    if ui
+                        .selectable_label(*active_tool == tool, label)
+                        .clicked()
+                    {
                         *active_tool = tool;
                         placement.points.clear();
                     }
@@ -257,22 +246,94 @@ pub fn draw_ui(
                 ui.label(format!("Position: ({:.0}, {:.0})", pos.x, pos.z));
                 ui.label(format!("Elevation: {:.1}", elevation));
 
-                // Show resource info
                 if let Some(cell) = resource_map.sample_world(pos.x, pos.z, config.map_size) {
-                    ui.label(format!("{} ({:.0}%)", cell.resource.label(), cell.richness * 100.0));
+                    ui.label(format!(
+                        "{} ({:.0}%)",
+                        cell.resource.label(),
+                        cell.richness * 100.0
+                    ));
                 }
 
-                // Show nearby road node info
                 if let Some(node_id) = road_network.nearest_node(pos, 5.0) {
                     if let Some(node) = road_network.node(node_id) {
                         ui.separator();
                         ui.label(format!("Road node ({} connections)", node.segments.len()));
                     }
                 }
+
+                // Nearby building info
+                let mut nearest_building: Option<(&Building, f32)> = None;
+                for (b, t) in &buildings_query {
+                    let dist = t.translation.distance(pos);
+                    if dist < 10.0
+                        && (nearest_building.is_none() || dist < nearest_building.unwrap().1)
+                    {
+                        nearest_building = Some((b, dist));
+                    }
+                }
+                if let Some((b, _)) = nearest_building {
+                    let def = &BUILDING_DEFS[b.def_index];
+                    ui.separator();
+                    ui.label(def.label);
+                    ui.label(format!("Category: {:?}", def.category));
+                    if def.workers_required > 0 {
+                        ui.label(format!("Workers needed: {}", def.workers_required));
+                    }
+                    if def.workers_provided > 0 {
+                        ui.label(format!("Workers provided: {}", def.workers_provided));
+                    }
+                }
             } else {
                 ui.label("--");
             }
         });
+
+    // --- Economy debug panel (F3) ---
+    if economy_debug_visible.0 {
+        egui::TopBottomPanel::bottom("economy_debug").show(ctx, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong("Economy Debug");
+                ui.separator();
+
+                let deficit = economy_debug
+                    .workers_needed
+                    .saturating_sub(economy_debug.workers_provided);
+                ui.label(format!(
+                    "Workers: {}/{} (need {} more)",
+                    economy_debug.workers_provided, economy_debug.workers_needed, deficit,
+                ));
+                ui.separator();
+
+                let producer_status = if economy_debug.producer_viable {
+                    format!(
+                        "viable ({} candidates{})",
+                        economy_debug.producer_candidates,
+                        match economy_debug.best_score {
+                            Some(s) => format!(", best score {:.1}", s),
+                            None => String::new(),
+                        },
+                    )
+                } else {
+                    format!("not viable ({})", economy_debug.producer_reason)
+                };
+                ui.label(format!("Producer: {}", producer_status));
+                ui.separator();
+
+                let residential_status = if economy_debug.residential_viable {
+                    format!("viable ({} candidates)", economy_debug.residential_candidates)
+                } else {
+                    format!("not viable ({})", economy_debug.residential_reason)
+                };
+                ui.label(format!("Residential: {}", residential_status));
+                ui.separator();
+
+                match &economy_debug.last_spawn {
+                    Some(s) => ui.label(format!("Last: {}", s)),
+                    None => ui.label("Last: --"),
+                };
+            });
+        });
+    }
 
     // --- Notifications (bottom-right) ---
     if !notifications.messages.is_empty() {

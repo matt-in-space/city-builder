@@ -611,32 +611,34 @@ pub fn draw_road_debug(
     placement: Res<RoadPlacementState>,
     active_tool: Res<ActiveTool>,
     road_network: Res<RoadNetwork>,
+    debug_visible: Res<crate::ui::DebugVisible>,
     mut gizmos: Gizmos,
 ) {
-    // --- Committed road network ---
-    let node_color = Color::srgb(1.0, 1.0, 1.0);
-    let segment_color = Color::srgb(1.0, 0.6, 0.2);
+    // --- Committed road network (debug only) ---
+    if debug_visible.0 {
+        let node_color = Color::srgb(1.0, 1.0, 1.0);
+        let segment_color = Color::srgb(1.0, 0.6, 0.2);
 
-    for node in road_network.nodes().values() {
-        gizmos.sphere(Isometry3d::from_translation(node.position), 0.4, node_color);
-    }
+        for node in road_network.nodes().values() {
+            gizmos.sphere(Isometry3d::from_translation(node.position), 0.4, node_color);
+        }
 
-    for segment in road_network.segments().values() {
-        let Some(a) = road_network.node(segment.nodes[0]) else { continue };
-        let Some(b) = road_network.node(segment.nodes[1]) else { continue };
+        for segment in road_network.segments().values() {
+            let Some(a) = road_network.node(segment.nodes[0]) else { continue };
+            let Some(b) = road_network.node(segment.nodes[1]) else { continue };
 
-        // Build full point sequence: start + control points + end
-        let mut path = vec![a.position];
-        path.extend_from_slice(&segment.control_points);
-        path.push(b.position);
+            let mut path = vec![a.position];
+            path.extend_from_slice(&segment.control_points);
+            path.push(b.position);
 
-        let curve = sample_catmull_rom(&path, 16);
-        for pair in curve.windows(2) {
-            gizmos.line(pair[0], pair[1], segment_color);
+            let curve = sample_catmull_rom(&path, 16);
+            for pair in curve.windows(2) {
+                gizmos.line(pair[0], pair[1], segment_color);
+            }
         }
     }
 
-    // --- In-progress placement preview (yellow curve) ---
+    // --- In-progress placement preview (yellow curve, always visible) ---
     if *active_tool != ActiveTool::Road || placement.points.is_empty() {
         return;
     }

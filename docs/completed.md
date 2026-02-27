@@ -47,4 +47,31 @@ Priority order prevents overlap: Coal > Clay > Stone > Fertile Land > Timber. Ea
 
 **Key code:** `src/resources.rs` — `ResourceType`, `ResourceMap` (with `sample_world()`), `generate_resource_map()`.
 
-**Deferred items:** Resource accessibility check (whether a resource is connected to road network) will be handled by building spawning as a cross-system query. Resource overlay toggle is future polish.
+### Lot Subdivision (Spatial Claims)
+Buildings claim space via `Lot` entities (center, rotation, half_extents, building reference). OBB-based overlap detection prevents buildings from overlapping each other, roads (with clearance), and water. Terrain steepness is checked (max 3.0 unit height delta across lot corners). Lots are created automatically when buildings spawn and are tied to their building entity. Debug wireframe visualization available via F3.
+
+**Key code:** `src/building.rs` — `Lot` component, `obb_overlap()`, `validate_placement()`, `lot_corners()`, `draw_lot_debug()`.
+
+**Not yet implemented:** Demolition/lot freeing (no demolition system yet). Spatial index deferred — brute-force iteration is fine at current building counts.
+
+### Building Spawning & Economy-Driven Growth
+Two building types: Logging Camp (producer, extracts timber, requires 5 workers) and Worker Cottage (residential, provides 2 workers). Buildings spawn organically along roads based on economic viability:
+
+1. **Producer viability:** Walks sampled points along road splines checking for matching resources (richness > 0.2) with no existing extractor within 60 units.
+2. **Residential viability:** Spawns when workers_needed > workers_provided across all buildings.
+3. **Candidate finding:** Samples positions along both sides of every road segment with setback, validates placement (lot overlap, road clearance, water, steepness).
+4. **Scoring:** Producers scored by resource richness (0-8) with penalty near residential. Residential scored by proximity to producers (0-6) and clustering bonus (0-2). Terrain flatness (0-2) for both.
+5. **Spawning:** One building per tick (2-second interval, scaled by game speed). Best-scored candidate wins. Notification on spawn.
+
+All buildings are currently gray cubes (4x3x4 units). Buildings orient to face the road.
+
+**Key code:** `src/economy.rs` — `BuildingDef`, `BUILDING_DEFS`, `evaluate_and_spawn()`, `is_producer_viable()`. `src/building.rs` — `Building` component, `find_candidates()`, `score_candidate()`, `spawn_building()`, `SpawnTimer`.
+
+**Economy debug panel (F3):** Shows worker math, producer/residential viability with reasons, candidate counts, best score, and last spawn location. `EconomyDebug` resource populated each tick.
+
+**Deferred to P1/P2:** Varied building types and meshes, farms/farmland, DemandPressure resource (replaced by simpler viability checks), commercial buildings. See p1-starting-industries, p1-basic-economy, p2-economic-pressure.
+
+### Debug Overlay System
+Single F3 toggle (`DebugVisible` resource) controls all debug visualizations: economy debug panel (egui bottom bar), road network gizmos (white node spheres, orange segment lines), resource cell gizmos (yellow rects for cells with richness > 0.2), and lot boundary wireframes (white outlines). Road placement preview (yellow curve while actively placing) remains visible regardless of debug toggle.
+
+**Key code:** `src/ui.rs` — `DebugVisible`, F3 in `speed_controls()`, economy panel in `draw_ui()`. `src/road.rs` — `draw_road_debug()`. `src/resources.rs` — `draw_resource_debug()`. `src/building.rs` — `draw_lot_debug()`.

@@ -92,6 +92,27 @@ impl Heightmap {
         self.heights[(row * self.resolution + col) as usize]
     }
 
+    /// Sample terrain flatness at a world-space (x, z) position.
+    /// Returns the Y component of the surface normal (1.0 = flat, 0.0 = cliff).
+    pub fn sample_flatness(&self, x: f32, z: f32, map_size: f32) -> f32 {
+        let half = map_size / 2.0;
+        let cell_size = map_size / self.resolution as f32;
+
+        let col = ((x + half) / cell_size).clamp(0.0, (self.resolution - 1) as f32) as u32;
+        let row = ((z + half) / cell_size).clamp(0.0, (self.resolution - 1) as f32) as u32;
+
+        let res = self.resolution;
+        let height = self.get(row, col);
+        let h_left = if col > 0 { self.get(row, col - 1) } else { height };
+        let h_right = if col < res - 1 { self.get(row, col + 1) } else { height };
+        let h_down = if row > 0 { self.get(row - 1, col) } else { height };
+        let h_up = if row < res - 1 { self.get(row + 1, col) } else { height };
+
+        Vec3::new(h_left - h_right, 2.0 * cell_size, h_down - h_up)
+            .normalize()
+            .y
+    }
+
     /// Sample the terrain height at a world-space (x, z) position using
     /// bilinear interpolation. The terrain is centered on the origin.
     pub fn sample_world(&self, x: f32, z: f32, map_size: f32) -> f32 {
